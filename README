@@ -1,0 +1,113 @@
+Contains patches to apply to ROMs for Nintendo Vs. Excitebike (english) to
+restore attract mode when in free play. Normally, free play mode causes the
+game to immediately start, sitting on the option screen forever and burning
+in the monitor. It also does not display high scores. This fixes the game to
+display the attract sequence even when in free play, prompting the player to
+press start instead of inserting a coin to start playing. To use this, apply
+the hex changes to the correct ROMs, respecting the ROM offsets in MAME (for
+instance, 0x86C1 is ROM mds-eb4-3e.1d in MAME offset 0x6C1, 0xB6E0 is ROM
+mds-eb4-3e.1c in MAME offset 0x16E0) and burn them using an EEPROM writer.
+If you would like, you can check out <https://github.com/DragonMinded/arcadeutils>
+to use the `bindiff` utility to apply the patches found in the two `.patch` files instead of performing the edits manually. For ROM offset documentation, see
+<https://github.com/mamedev/mame/blob/master/src/mame/drivers/vsnes.cpp>,
+specifically the "ROM_START" section for "excitebk".
+
+offset 0x86C1 (draw high scores routine, hook this so we can change it in draw_press_start_hook)
+20 09 B7      ; JSR draw_press_start_hook
+
+offset 0x86f1 (see if we should start another game check, make it ignore free play setting)
+A9 00         ; LDA #0x0
+
+offset 0x8776 (see if we should start a game, make it ignore free play setting)
+A9 00         ; LDA #0x0
+
+offset 0x8AEC (decrement credit on start game code, change this in clear_coin_count)
+20 F7 B6      ; JSR clear_coin_count
+EA            ; NOP
+EA            ; NOP
+EA            ; NOP
+EA            ; NOP
+EA            ; NOP
+EA            ; NOP
+EA            ; NOP
+EA            ; NOP
+EA            ; NOP
+
+offset 0x8C94 (another freeplay check, make it ignore free play setting)
+A9 00         ; LDA #0x0
+
+offset 0xB6E0
+check_start_pressed:
+              ; Checks to see if either the blue or green start button is pressed.
+              ; If it is not, skips adding credits. If it is, moves on to another check.
+A5 15         ; LDA #0x15 (1P controls byte)
+29 30         ; AND #0x30
+D0 01         ; BNE start_pressed
+60            ; RTS
+start_pressed:
+              ; Checks to see if we're in the attract screen (state 0x0) or the demo screen
+              ; (state 0xC). If so, move on to setting credits to non-zero to start the game,
+              ; if not, skip adding credits.
+A5 41         ; LDA global_level_state
+C9 00         ; CMP #0x0 (high scores screen)
+F0 05         ; BEQ coin_up
+C9 0C         ; CMP #0xC (demonstration screen)
+F0 01         ; BEQ coin_up
+60            ; RTS
+coin_up:
+              ; The original rom just non-stop set the credits value to 0x20. So, do that here.
+A9 20         ; LDA #0x20
+85 51         ; STA credit_count
+60            ; RTS
+
+offset 0xB6F7
+clear_coin_count:
+              ; Most of this was copied from 0x8AEC since we need to add a bit different control
+              ; flow. First, we check if we are in free play. If we are, move to clear coins.
+              ; If not, check to see if we should decrement credits (credits > 0) and if so,
+              ; do that.
+A5 4D         ; LDA coin_dip_switches
+C9 07         ; CMP #0x7
+F0 07         ; BEQ clear_coins
+A5 51         ; LDA credit_count
+F0 02         ; BEQ do_nothing
+C6 51         ; DEC credit_count
+do_nothing:
+              ; Go back to our original caller.
+60            ; RTS
+clear_coins:
+              ; Set credits back to 0 unconditionally, so after a game over we go back to the
+              ; attract screen.
+A9 00         ; LDA #0x0
+85 51         ; STA credit_count
+60            ; RTS
+
+0ffset 0xB709
+draw_press_start_hook:
+              ; The tables for what to draw where are hardcoded and there's no room for expansion.
+              ; So, in order to display "PRESS START" instead of "INSERT COIN" in free play, we need
+              ; to see if 1) we're in free play and 2) we're rendering the "INSERT COIN" section. If
+              ; so, override the original display instructions. If not, just do whatever the original
+              ; code was supposed to do.
+A5 4D         ; LDA coin_dip_switches
+C9 07         ; CMP #0x7
+D0 0E         ; BNE dont_hook
+A5 43         ; LDA current_chunk_render_for_attract
+C9 09         ; A == 9?
+D0 08         ; BNE dont_hook
+              ; Overwrite the display instructions with a pointer to our new text so it displays correctly.
+A9 20         ; LDA #0x20
+85 00         ; STA offset 0x0
+A9 B7         ; LDA #0xB7
+85 01         ; STA offset 0x1
+
+dont_hook:
+4C EB 9A      ; JMP original_drawing_function
+
+offset 0xB720
+press_start_text:
+22 EA 0B 19 1B 0E 1C 1C FC 1C 1D 0A 1B 1D 00  ; "PRESS START", replaces "INSERT COIN" text on the attract screen when in free play.
+
+offset 0xD04c (main game loop, checks if we're in free play and sets credits to 32, change this in check_start_pressed)
+20 E0 B6      ; JSR check_start_pressed
+EA            ; NOP
