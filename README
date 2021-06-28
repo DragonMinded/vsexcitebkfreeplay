@@ -8,7 +8,8 @@ the hex changes to the correct ROMs, respecting the ROM offsets in MAME (for
 instance, 0x86C1 is ROM mds-eb4-3e.1d in MAME offset 0x6C1, 0xB6E0 is ROM
 mds-eb4-3e.1c in MAME offset 0x16E0) and burn them using an EEPROM writer.
 If you would like, you can check out <https://github.com/DragonMinded/arcadeutils>
-to use the `bindiff` utility to apply the patches found in the two `.patch` files instead of performing the edits manually. For ROM offset documentation, see
+to use the `bindiff` utility to apply the patches found in the two `.patch`
+files instead of performing the edits manually. For ROM offset documentation, see
 <https://github.com/mamedev/mame/blob/master/src/mame/drivers/vsnes.cpp>,
 specifically the "ROM_START" section for "excitebk".
 
