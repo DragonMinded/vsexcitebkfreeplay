@@ -86,7 +86,7 @@ A9 00         ; LDA #0x0
 0ffset 0xB709
 draw_press_start_hook:
               ; The tables for what to draw where are hardcoded and there's no room for expansion.
-              ; So, in order to display "PRESS START" instead of "INSERT COIN" in free play, we need
+              ; So, in order to display "PUSH 1 OR 2" instead of "INSERT COIN" in free play, we need
               ; to see if 1) we're in free play and 2) we're rendering the "INSERT COIN" section. If
               ; so, override the original display instructions. If not, just do whatever the original
               ; code was supposed to do.
@@ -107,7 +107,7 @@ dont_hook:
 
 offset 0xB720
 press_start_text:
-22 EA 0B 19 1B 0E 1C 1C FC 1C 1D 0A 1B 1D 00  ; "PRESS START", replaces "INSERT COIN" text on the attract screen when in free play.
+22 EA 0B 19 1E 1C 11 FC 01 FC 18 1B FC 02 00  ; "PUSH 1 OR 2", replaces "INSERT COIN" text on the attract screen when in free play.
 
 offset 0xD04c (main game loop, checks if we're in free play and sets credits to 32, change this in check_start_pressed)
 20 E0 B6      ; JSR check_start_pressed
